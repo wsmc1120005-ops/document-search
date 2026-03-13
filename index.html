@@ -1,0 +1,992 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>智慧文件搜尋</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #1a1a2e;
+    --paper: #f5f0e8;
+    --paper-dark: #ede8dd;
+    --accent: #c84b31;
+    --accent-soft: #e8cfc8;
+    --steel: #4a5568;
+    --steel-light: #a0aec0;
+    --grid: #d4cfc6;
+    --success: #2d6a4f;
+    --card-bg: #faf7f2;
+    --shadow: rgba(26,26,46,0.12);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: 'Noto Sans TC', sans-serif;
+    min-height: 100vh;
+    position: relative;
+    overflow-x: hidden;
+  }
+
+  /* 工業感格紋背景 */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(var(--grid) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+    background-size: 32px 32px;
+    opacity: 0.4;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .container {
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 0 24px;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* ── Header ── */
+  header {
+    padding: 48px 0 32px;
+    border-bottom: 2px solid var(--ink);
+    margin-bottom: 48px;
+  }
+
+  .header-inner {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 16px;
+  }
+
+  .logo-area {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .company-tag {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--steel);
+    background: var(--paper-dark);
+    border: 1px solid var(--grid);
+    padding: 3px 10px;
+    display: inline-block;
+  }
+
+  h1 {
+    font-size: 32px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    line-height: 1.1;
+    color: var(--ink);
+  }
+
+  h1 span {
+    color: var(--accent);
+  }
+
+  .status-dot {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    color: var(--steel);
+    font-family: 'Space Mono', monospace;
+  }
+
+  .dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--steel-light);
+  }
+
+  .dot.online {
+    background: #48bb78;
+    box-shadow: 0 0 0 3px rgba(72,187,120,0.2);
+    animation: pulse 2s infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { box-shadow: 0 0 0 3px rgba(72,187,120,0.2); }
+    50% { box-shadow: 0 0 0 6px rgba(72,187,120,0.08); }
+  }
+
+  /* ── Search Box ── */
+  .search-section {
+    margin-bottom: 40px;
+  }
+
+  .search-label {
+    font-size: 12px;
+    font-family: 'Space Mono', monospace;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--steel);
+    margin-bottom: 12px;
+    display: block;
+  }
+
+  .search-box {
+    display: flex;
+    gap: 0;
+    border: 2px solid var(--ink);
+    background: white;
+    box-shadow: 4px 4px 0 var(--ink);
+    transition: box-shadow 0.15s;
+  }
+
+  .search-box:focus-within {
+    box-shadow: 6px 6px 0 var(--accent);
+  }
+
+  .search-input {
+    flex: 1;
+    border: none;
+    outline: none;
+    padding: 16px 20px;
+    font-size: 16px;
+    font-family: 'Noto Sans TC', sans-serif;
+    background: transparent;
+    color: var(--ink);
+  }
+
+  .search-input::placeholder {
+    color: var(--steel-light);
+  }
+
+  .search-btn {
+    border: none;
+    border-left: 2px solid var(--ink);
+    background: var(--ink);
+    color: white;
+    padding: 0 28px;
+    font-family: 'Space Mono', monospace;
+    font-size: 13px;
+    letter-spacing: 0.05em;
+    cursor: pointer;
+    transition: background 0.15s;
+    white-space: nowrap;
+  }
+
+  .search-btn:hover { background: var(--accent); }
+  .search-btn:disabled { background: var(--steel-light); cursor: not-allowed; }
+
+  .search-hint {
+    margin-top: 10px;
+    font-size: 12px;
+    color: var(--steel-light);
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+
+  .hint-chip {
+    cursor: pointer;
+    padding: 3px 10px;
+    border: 1px solid var(--grid);
+    background: var(--card-bg);
+    font-size: 12px;
+    transition: all 0.1s;
+  }
+
+  .hint-chip:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  /* ── Loading ── */
+  .loading-bar {
+    display: none;
+    margin-bottom: 24px;
+  }
+
+  .loading-bar.show { display: block; }
+
+  .loading-track {
+    height: 3px;
+    background: var(--grid);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .loading-fill {
+    height: 100%;
+    background: var(--accent);
+    animation: loading 1.5s ease-in-out infinite;
+    transform-origin: left;
+  }
+
+  @keyframes loading {
+    0% { transform: scaleX(0) translateX(0); }
+    50% { transform: scaleX(0.6) translateX(60%); }
+    100% { transform: scaleX(0) translateX(200%); }
+  }
+
+  .loading-text {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    color: var(--steel);
+    margin-top: 8px;
+    letter-spacing: 0.05em;
+  }
+
+  /* ── Results ── */
+  .results-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--grid);
+  }
+
+  .results-count {
+    font-family: 'Space Mono', monospace;
+    font-size: 12px;
+    color: var(--steel);
+  }
+
+  .results-count strong {
+    color: var(--ink);
+    font-size: 14px;
+  }
+
+  .sort-label {
+    font-size: 12px;
+    color: var(--steel-light);
+    font-family: 'Space Mono', monospace;
+  }
+
+  .results-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  /* ── Result Card ── */
+  .result-card {
+    background: var(--card-bg);
+    border: 1.5px solid var(--grid);
+    padding: 20px 24px;
+    display: grid;
+    grid-template-columns: 48px 1fr auto;
+    gap: 16px;
+    align-items: start;
+    cursor: pointer;
+    transition: all 0.15s;
+    position: relative;
+    animation: slideIn 0.3s ease both;
+  }
+
+  .result-card:nth-child(1) { animation-delay: 0s; }
+  .result-card:nth-child(2) { animation-delay: 0.05s; }
+  .result-card:nth-child(3) { animation-delay: 0.1s; }
+  .result-card:nth-child(4) { animation-delay: 0.15s; }
+  .result-card:nth-child(5) { animation-delay: 0.2s; }
+
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .result-card:hover {
+    border-color: var(--ink);
+    box-shadow: 4px 4px 0 var(--ink);
+    transform: translate(-2px, -2px);
+  }
+
+  .result-card.top {
+    border-color: var(--accent);
+    background: white;
+  }
+
+  .result-card.top::before {
+    content: 'BEST MATCH';
+    position: absolute;
+    top: -1px;
+    right: 20px;
+    background: var(--accent);
+    color: white;
+    font-family: 'Space Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.1em;
+    padding: 2px 8px;
+  }
+
+  .file-icon {
+    width: 48px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    background: var(--paper-dark);
+    border: 1px solid var(--grid);
+    flex-shrink: 0;
+  }
+
+  .file-info { min-width: 0; }
+
+  .file-name {
+    font-weight: 600;
+    font-size: 15px;
+    color: var(--ink);
+    margin-bottom: 4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .file-meta {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 8px;
+    flex-wrap: wrap;
+  }
+
+  .meta-tag {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    color: var(--steel);
+    letter-spacing: 0.05em;
+  }
+
+  .file-snippet {
+    font-size: 13px;
+    color: var(--steel);
+    line-height: 1.5;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .file-snippet mark {
+    background: #fff3cd;
+    color: var(--ink);
+    padding: 0 2px;
+    border-radius: 2px;
+  }
+
+  .score-area {
+    text-align: right;
+    flex-shrink: 0;
+  }
+
+  .score-value {
+    font-family: 'Space Mono', monospace;
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--ink);
+    line-height: 1;
+  }
+
+  .score-label {
+    font-family: 'Space Mono', monospace;
+    font-size: 9px;
+    color: var(--steel-light);
+    letter-spacing: 0.1em;
+    display: block;
+    margin-top: 2px;
+  }
+
+  .score-bar {
+    width: 64px;
+    height: 4px;
+    background: var(--grid);
+    margin-top: 8px;
+    margin-left: auto;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .score-fill {
+    height: 100%;
+    background: var(--accent);
+    transition: width 0.6s ease;
+  }
+
+  /* ── Empty / Error State ── */
+  .empty-state {
+    text-align: center;
+    padding: 64px 24px;
+    color: var(--steel-light);
+    display: none;
+  }
+
+  .empty-state.show { display: block; }
+
+  .empty-icon {
+    font-size: 48px;
+    margin-bottom: 16px;
+    opacity: 0.5;
+  }
+
+  .empty-state h3 {
+    font-size: 16px;
+    color: var(--steel);
+    margin-bottom: 8px;
+  }
+
+  .empty-state p {
+    font-size: 13px;
+    line-height: 1.6;
+  }
+
+  /* ── Initial State ── */
+  .initial-state {
+    text-align: center;
+    padding: 48px 24px;
+  }
+
+  .initial-icon {
+    font-size: 56px;
+    margin-bottom: 16px;
+  }
+
+  .initial-state h3 {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--ink);
+    margin-bottom: 8px;
+  }
+
+  .initial-state p {
+    font-size: 13px;
+    color: var(--steel);
+    line-height: 1.7;
+    max-width: 360px;
+    margin: 0 auto;
+  }
+
+  .feature-row {
+    display: flex;
+    justify-content: center;
+    gap: 32px;
+    margin-top: 32px;
+    flex-wrap: wrap;
+  }
+
+  .feature-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: var(--steel);
+  }
+
+  .feature-item .fi {
+    font-size: 28px;
+    background: var(--paper-dark);
+    border: 1px solid var(--grid);
+    width: 52px;
+    height: 52px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* ── Error Alert ── */
+  .error-alert {
+    background: #fff5f5;
+    border: 1.5px solid #fc8181;
+    padding: 14px 18px;
+    margin-bottom: 24px;
+    font-size: 13px;
+    color: #c53030;
+    display: none;
+    font-family: 'Space Mono', monospace;
+  }
+
+  .error-alert.show { display: block; }
+
+  /* ── Config Panel ── */
+  .config-toggle {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    background: var(--ink);
+    color: white;
+    border: none;
+    padding: 10px 16px;
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.05em;
+    cursor: pointer;
+    z-index: 100;
+    box-shadow: 3px 3px 0 var(--accent);
+  }
+
+  .config-toggle:hover { background: var(--accent); }
+
+  .config-panel {
+    position: fixed;
+    bottom: 68px;
+    right: 24px;
+    background: white;
+    border: 2px solid var(--ink);
+    box-shadow: 6px 6px 0 var(--ink);
+    padding: 20px;
+    width: 320px;
+    z-index: 99;
+    display: none;
+    animation: fadeIn 0.15s ease;
+  }
+
+  .config-panel.show { display: block; }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .config-panel h4 {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--steel);
+    margin-bottom: 16px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--grid);
+  }
+
+  .config-row {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-bottom: 14px;
+  }
+
+  .config-row label {
+    font-size: 11px;
+    font-family: 'Space Mono', monospace;
+    color: var(--steel);
+    letter-spacing: 0.05em;
+  }
+
+  .config-row input {
+    border: 1.5px solid var(--grid);
+    padding: 8px 12px;
+    font-size: 12px;
+    font-family: 'Space Mono', monospace;
+    outline: none;
+    color: var(--ink);
+    background: var(--paper);
+  }
+
+  .config-row input:focus { border-color: var(--ink); }
+
+  .folder-badge {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    color: var(--steel);
+    background: var(--paper-dark);
+    border: 1px solid var(--grid);
+    padding: 6px 10px;
+    word-break: break-all;
+    line-height: 1.6;
+  }
+
+  .config-save {
+    width: 100%;
+    background: var(--ink);
+    color: white;
+    border: none;
+    padding: 10px;
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.05em;
+    cursor: pointer;
+    margin-top: 4px;
+  }
+
+  .config-save:hover { background: var(--accent); }
+
+  /* ── Footer ── */
+  footer {
+    margin-top: 80px;
+    padding: 24px 0;
+    border-top: 1px solid var(--grid);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    color: var(--steel-light);
+    letter-spacing: 0.08em;
+  }
+
+  @media (max-width: 600px) {
+    h1 { font-size: 24px; }
+    .result-card { grid-template-columns: 40px 1fr; }
+    .score-area { display: none; }
+    .header-inner { flex-direction: column; align-items: flex-start; }
+    .feature-row { gap: 16px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <header>
+    <div class="header-inner">
+      <div class="logo-area">
+        <span class="company-tag">大詠城機械股份有限公司</span>
+        <h1>智慧<span>文件</span>搜尋</h1>
+      </div>
+      <div class="status-dot">
+        <div class="dot" id="statusDot"></div>
+        <span id="statusText">未連線</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Search -->
+  <section class="search-section">
+    <label class="search-label">輸入搜尋關鍵字或描述</label>
+    <div class="search-box">
+      <input
+        type="text"
+        class="search-input"
+        id="searchInput"
+        placeholder="例如：上週的出差申請、鑄件品質異常、訂單明細…"
+        autocomplete="off"
+      >
+      <button class="search-btn" id="searchBtn" onclick="doSearch()">
+        ▶ 搜尋
+      </button>
+    </div>
+    <div class="search-hint">
+      <span style="color:var(--steel-light);font-size:11px;font-family:'Space Mono',monospace;">快速搜尋：</span>
+      <span class="hint-chip" onclick="quickSearch('出差申請')">出差申請</span>
+      <span class="hint-chip" onclick="quickSearch('鑄件照片')">鑄件照片</span>
+      <span class="hint-chip" onclick="quickSearch('訂單')">訂單資料</span>
+      <span class="hint-chip" onclick="quickSearch('品質異常')">品質異常</span>
+    </div>
+  </section>
+
+  <!-- Loading -->
+  <div class="loading-bar" id="loadingBar">
+    <div class="loading-track"><div class="loading-fill"></div></div>
+    <div class="loading-text" id="loadingText">▷ 向量計算中，請稍候…</div>
+  </div>
+
+  <!-- Error -->
+  <div class="error-alert" id="errorAlert"></div>
+
+  <!-- Results -->
+  <div id="resultsSection">
+    <!-- 初始狀態 -->
+    <div class="initial-state" id="initialState">
+      <div class="initial-icon">🔍</div>
+      <h3>語意向量搜尋</h3>
+      <p>不需要精確關鍵字，只需描述你想找的內容，系統會自動找出最相關的文件。</p>
+      <div class="feature-row">
+        <div class="feature-item">
+          <div class="fi">📄</div>
+          <span>PDF 文件</span>
+        </div>
+        <div class="feature-item">
+          <div class="fi">🖼️</div>
+          <span>鑄件照片</span>
+        </div>
+        <div class="feature-item">
+          <div class="fi">📊</div>
+          <span>Excel 試算表</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 無結果 -->
+    <div class="empty-state" id="emptyState">
+      <div class="empty-icon">📭</div>
+      <h3>找不到相關文件</h3>
+      <p>請嘗試不同的描述方式，或確認 Google Drive 資料夾中已有文件。</p>
+    </div>
+
+    <!-- 結果清單 -->
+    <div id="resultsHeader" style="display:none">
+      <div class="results-header">
+        <div class="results-count">找到 <strong id="resultsCount">0</strong> 份相關文件</div>
+        <div class="sort-label">↓ 相似度排序</div>
+      </div>
+      <div class="results-list" id="resultsList"></div>
+    </div>
+  </div>
+</div>
+
+<!-- 設定按鈕 -->
+<button class="config-toggle" onclick="toggleConfig()">ℹ 連線資訊</button>
+
+<div class="config-panel" id="configPanel">
+  <h4>系統連線資訊</h4>
+  <div class="config-row">
+    <label>GAS 後端（已連線）</label>
+    <div class="folder-badge">✅ Google Apps Script 已部署</div>
+  </div>
+  <div class="config-row">
+    <label>Drive 資料夾（已內建）</label>
+    <div class="folder-badge">📁 11BBM5ohU4Myeec-KGAoh6f_uUPSArmzW</div>
+  </div>
+</div>
+
+<!-- Footer -->
+<div class="container">
+  <footer>
+    <span>SEMANTIC VECTOR SEARCH SYSTEM</span>
+    <span>POWERED BY GEMINI EMBEDDING</span>
+    <span id="footerTime"></span>
+  </footer>
+</div>
+
+<script>
+// ── 系統設定（已內建，無需手動輸入） ──
+const GAS_URL   = '<?= ScriptApp.getService().getUrl() ?>';
+const FOLDER_ID = '11BBM5ohU4Myeec-KGAoh6f_uUPSArmzW';
+
+function loadConfig() {
+  return { gasUrl: GAS_URL };
+}
+
+function toggleConfig() {
+  document.getElementById('configPanel').classList.toggle('show');
+}
+
+// ── 狀態指示（固定已連線） ──
+function checkStatus() {
+  document.getElementById('statusDot').classList.add('online');
+  document.getElementById('statusText').textContent = '已連線';
+}
+
+// ── 搜尋主流程 ──
+// ── JSONP 搜尋（繞過 CORS，GAS 不支援自訂 header）──
+let _jsonpTimer = null;
+
+function doSearch() {
+  const query = document.getElementById('searchInput').value.trim();
+  if (!query) return;
+
+  setLoading(true);
+  clearResults();
+  hideError();
+
+  // 清除前一次未完成的 JSONP
+  if (_jsonpTimer) clearTimeout(_jsonpTimer);
+  const oldScript = document.getElementById('_gasScript');
+  if (oldScript) oldScript.remove();
+
+  // 全域 callback，GAS 回傳後呼叫
+  const cbName = '_gasCallback_' + Date.now();
+  window[cbName] = function(data) {
+    clearTimeout(_jsonpTimer);
+    document.getElementById('_gasScript')?.remove();
+    delete window[cbName];
+    setLoading(false);
+    if (data.error) { showError('GAS 錯誤：' + data.error); return; }
+    renderResults(data.results || [], query);
+  };
+
+  // 建立 <script> 動態注入
+  const url    = GAS_URL + '?action=search&query=' + encodeURIComponent(query) + '&callback=' + cbName;
+  const script = document.createElement('script');
+  script.id    = '_gasScript';
+  script.src   = url;
+  script.onerror = function() {
+    setLoading(false);
+    showError('無法連線到 GAS，請確認已部署為「允許任何人」存取。');
+    delete window[cbName];
+  };
+  document.body.appendChild(script);
+
+  // 逾時保護（30 秒）
+  _jsonpTimer = setTimeout(function() {
+    setLoading(false);
+    showError('搜尋逾時（30秒），GAS 可能正在冷啟動，請再試一次。');
+    document.getElementById('_gasScript')?.remove();
+    delete window[cbName];
+  }, 30000);
+}
+
+// ── 渲染結果 ──
+function renderResults(results, query) {
+  document.getElementById('initialState').style.display = 'none';
+  document.getElementById('emptyState').classList.remove('show');
+
+  if (!results.length) {
+    document.getElementById('emptyState').classList.add('show');
+    return;
+  }
+
+  const keywords = query.split(/\s+/);
+
+  document.getElementById('resultsHeader').style.display = 'block';
+  document.getElementById('resultsCount').textContent = results.length;
+
+  const list = document.getElementById('resultsList');
+  list.innerHTML = '';
+
+  results.forEach((item, i) => {
+    const pct = Math.round(item.score * 100);
+    const card = document.createElement('div');
+    card.className = `result-card${i === 0 ? ' top' : ''}`;
+    card.onclick = () => openFile(item.url);
+
+    const snippet = highlightKeywords(item.snippet || '（無預覽文字）', keywords);
+
+    card.innerHTML = `
+      <div class="file-icon">${getFileIcon(item.mimeType, item.name)}</div>
+      <div class="file-info">
+        <div class="file-name" title="${escHtml(item.name)}">${escHtml(item.name)}</div>
+        <div class="file-meta">
+          <span class="meta-tag">${getFileType(item.mimeType)}</span>
+          <span class="meta-tag">${formatDate(item.modifiedDate)}</span>
+          ${item.size ? `<span class="meta-tag">${formatSize(item.size)}</span>` : ''}
+        </div>
+        <div class="file-snippet">${snippet}</div>
+      </div>
+      <div class="score-area">
+        <div class="score-value">${pct}%</div>
+        <span class="score-label">相似度</span>
+        <div class="score-bar"><div class="score-fill" style="width:${pct}%"></div></div>
+      </div>
+    `;
+
+    list.appendChild(card);
+  });
+}
+
+// ── 工具函式 ──
+function quickSearch(text) {
+  document.getElementById('searchInput').value = text;
+  doSearch();
+}
+
+function openFile(url) {
+  if (url) window.open(url, '_blank');
+}
+
+function setLoading(on) {
+  const bar = document.getElementById('loadingBar');
+  const btn = document.getElementById('searchBtn');
+  if (on) {
+    bar.classList.add('show');
+    btn.disabled = true;
+    btn.textContent = '搜尋中…';
+  } else {
+    bar.classList.remove('show');
+    btn.disabled = false;
+    btn.textContent = '▶ 搜尋';
+  }
+}
+
+function clearResults() {
+  document.getElementById('resultsList').innerHTML = '';
+  document.getElementById('resultsHeader').style.display = 'none';
+  document.getElementById('emptyState').classList.remove('show');
+  document.getElementById('initialState').style.display = 'none';
+}
+
+function showError(msg) {
+  const el = document.getElementById('errorAlert');
+  el.textContent = '⚠ ' + msg;
+  el.classList.add('show');
+}
+
+function hideError() {
+  document.getElementById('errorAlert').classList.remove('show');
+}
+
+function showToast(msg) {
+  const t = document.createElement('div');
+  t.style.cssText = 'position:fixed;bottom:100px;right:24px;background:#1a1a2e;color:white;padding:10px 16px;font-family:Space Mono,monospace;font-size:11px;z-index:999;animation:fadeIn 0.2s ease;';
+  t.textContent = '✓ ' + msg;
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 2000);
+}
+
+function getFileIcon(mime, name) {
+  if (!mime) mime = '';
+  const ext = (name || '').split('.').pop().toLowerCase();
+  if (mime.includes('image') || ['jpg','jpeg','png','gif','webp'].includes(ext)) return '🖼️';
+  if (mime.includes('pdf') || ext === 'pdf') return '📄';
+  if (mime.includes('spreadsheet') || mime.includes('excel') || ['xlsx','xls','csv'].includes(ext)) return '📊';
+  if (mime.includes('document') || mime.includes('word') || ['docx','doc'].includes(ext)) return '📝';
+  if (mime.includes('presentation') || ['pptx','ppt'].includes(ext)) return '📑';
+  return '📁';
+}
+
+function getFileType(mime) {
+  if (!mime) return 'FILE';
+  if (mime.includes('image')) return 'IMAGE';
+  if (mime.includes('pdf')) return 'PDF';
+  if (mime.includes('spreadsheet') || mime.includes('excel')) return 'EXCEL';
+  if (mime.includes('document') || mime.includes('word')) return 'WORD';
+  if (mime.includes('folder')) return 'FOLDER';
+  return mime.split('/').pop().toUpperCase().slice(0, 8);
+}
+
+function formatDate(d) {
+  if (!d) return '';
+  const dt = new Date(d);
+  return `${dt.getFullYear()}/${String(dt.getMonth()+1).padStart(2,'0')}/${String(dt.getDate()).padStart(2,'0')}`;
+}
+
+function formatSize(bytes) {
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1048576) return Math.round(bytes/1024) + ' KB';
+  return (bytes/1048576).toFixed(1) + ' MB';
+}
+
+function highlightKeywords(text, kws) {
+  let result = escHtml(text);
+  kws.forEach(kw => {
+    if (kw.length < 2) return;
+    const re = new RegExp(escRegex(kw), 'gi');
+    result = result.replace(re, m => `<mark>${m}</mark>`);
+  });
+  return result;
+}
+
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function escRegex(s) {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+// ── Enter 鍵觸發搜尋 ──
+document.getElementById('searchInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') doSearch();
+});
+
+// ── 時鐘 ──
+function updateClock() {
+  const now = new Date();
+  document.getElementById('footerTime').textContent =
+    now.toLocaleTimeString('zh-TW', { hour12: false });
+}
+setInterval(updateClock, 1000);
+updateClock();
+
+// ── 初始化 ──
+checkStatus();
+</script>
+</body>
+</html>
